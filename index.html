@@ -135,17 +135,28 @@
       if ((input.startsWith("http://") || input.startsWith("https://")) && input.includes("apple.com")) {
         try {
           var urlObj = new URL(input);
-          // Check if the URL has an "id" query parameter (common in iTunes URLs)
+          // First, check for an "id" query parameter.
           if (urlObj.searchParams.has("id")) {
             var idParam = urlObj.searchParams.get("id");
             itunesId = idParam.replace(/^id/i, '');
           } else {
-            // For URLs like podcasts.apple.com, extract the id from the path (/id1498786226)
-            var match = urlObj.pathname.match(/\/id(\d+)/i);
-            if (match) {
-              itunesId = match[1];
+            // Otherwise, extract the final part of the pathname.
+            var pathname = urlObj.pathname;
+            // Remove trailing slash if present.
+            if (pathname.endsWith('/')) {
+              pathname = pathname.slice(0, -1);
+            }
+            var segments = pathname.split('/');
+            var finalSegment = segments[segments.length - 1];
+            // Remove leading "id" if it exists.
+            if (finalSegment.toLowerCase().startsWith("id")) {
+              finalSegment = finalSegment.substring(2);
+            }
+            // Ensure the extracted ID is purely numeric.
+            if (/^\d+$/.test(finalSegment)) {
+              itunesId = finalSegment;
             } else {
-              displayError("Couldn't find an 'id' in the URL.");
+              displayError("Could not extract a valid numeric id from URL.");
               return;
             }
           }
