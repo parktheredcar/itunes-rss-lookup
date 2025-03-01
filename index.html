@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>itunes rss lookup</title>
+  <style>
+    html, body {
+      height: 100%;
+      margin: 0;
+      padding: 0;
+      font-family: Arial, sans-serif;
+      background: #f5f5f5;
+    }
+    body {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+    .container {
+      text-align: center;
+      background: #fff;
+      padding: 20px;
+      border-radius: 8px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.1);
+    }
+    h1 {
+      margin-bottom: 20px;
+      font-size: 2em;
+      color: #333;
+    }
+    input[type="text"] {
+      padding: 10px;
+      width: 250px;
+      font-size: 16px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+    }
+    button {
+      padding: 10px 15px;
+      font-size: 16px;
+      margin-left: 5px;
+      border: none;
+      background: #007bff;
+      color: #fff;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    button:hover {
+      background: #0056b3;
+    }
+    .result {
+      margin-top: 20px;
+      text-align: left;
+      word-break: break-word;
+    }
+    a {
+      color: #007bff;
+      text-decoration: none;
+    }
+    a:hover {
+      text-decoration: underline;
+    }
+    details {
+      margin-top: 10px;
+    }
+    pre {
+      background: #eee;
+      padding: 10px;
+      border-radius: 4px;
+      overflow-x: auto;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>itunes rss lookup</h1>
+    <input type="text" id="itunesId" placeholder="Enter idXXXXXX, XXXXXX, or full URL" />
+    <button id="lookupBtn">Lookup</button>
+    <div class="result" id="result"></div>
+  </div>
+
+  <script>
+    // Display an error message in red in the result area.
+    function displayError(message) {
+      var resultDiv = document.getElementById('result');
+      resultDiv.innerHTML = '<p style="color:red;">' + message + '</p>';
+    }
+
+    // This function is called by the JSONP callback.
+    function handleResponse(data) {
+      var resultDiv = document.getElementById('result');
+      // Clear previous content.
+      resultDiv.innerHTML = '';
+      
+      if(data.results && data.results.length > 0) {
+        var feedUrl = data.results[0].feedUrl;
+        if(feedUrl) {
+          resultDiv.innerHTML += '<p>Feed URL: <a href="' + feedUrl + '" target="_blank">' + feedUrl + '</a></p>';
+        } else {
+          resultDiv.innerHTML += '<p>No feed URL found in the response.</p>';
+        }
+      } else {
+        resultDiv.innerHTML += '<p>No results found.</p>';
+      }
+      
+      // Append an expandable JSON dump.
+      var detailsEl = document.createElement('details');
+      var summaryEl = document.createElement('summary');
+      summaryEl.textContent = 'JSON response';
+      detailsEl.appendChild(summaryEl);
+      
+      var preEl = document.createElement('pre');
+      preEl.textContent = JSON.stringify(data, null, 2);
+      detailsEl.appendChild(preEl);
+      
+      resultDiv.appendChild(detailsEl);
+    }
+    
+    function lookup() {
+      var input = document.getElementById('itunesId').value.trim();
+      var resultDiv = document.getElementById('result');
+      // Hide previous results or errors.
+      resultDiv.innerHTML = '';
+
+      if(input === '') {
+        displayError('Please enter an iTunes ID or URL.');
+        return;
+      }
+      
+      var itunesId = null;
+      
+      // If input contains "itunes.apple.com", treat it as a URL.
+      if(input.includes("itunes.apple.com")) {
+        try {
+          var urlObj = new URL(input);
+          var idParam = urlObj.searchParams.get("id");
+          if(idParam) {
+            itunesId = idParam.replace(/^id/i, '');
+          } else {
+            displayError("Couldn't find an 'id' parameter in the URL.");
+            return;
+          }
+        } catch (e) {
+          displayError("Invalid URL provided.");
+          return;
+        }
+      }
+      // If input starts with 'id' followed by digits.
+      else if (/^id\d+$/i.test(input)) {
+        itunesId = input.replace(/^id/i, '');
+      }
+      // If input is digits only.
+      else if (/^\d+$/.test(input)) {
+        itunesId = input;
+      } else {
+        displayError("Input format not recognized. Please enter idXXXXXX, XXXXXX, or a full iTunes URL.");
+        return;
+      }
+      
+      // Remove any previous JSONP script tag.
+      var oldScript = document.getElementById('jsonpScript');
+      if(oldScript) {
+        document.body.removeChild(oldScript);
+      }
+      
+      var script = document.createElement('script');
+      script.id = 'jsonpScript';
+      script.src = 'https://itunes.apple.com/lookup?id=' + encodeURIComponent(itunesId) + '&callback=handleResponse';
+      
+      // Handle errors from the JSONP script.
+      script.onerror = function() {
+        displayError("There was an error fetching data from the iTunes API.");
+      };
+      
+      document.body.appendChild(script);
+    }
+    
+    document.getElementById('lookupBtn').addEventListener('click', lookup);
+    
+    // Allow the Enter key to trigger the lookup.
+    document.getElementById('itunesId').addEventListener('keyup', function(event) {
+      if (event.key === 'Enter') {
+        lookup();
+      }
+    });
+  </script>
+</body>
+</html>
