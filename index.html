@@ -93,10 +93,10 @@
       var resultDiv = document.getElementById('result');
       // Clear previous content.
       resultDiv.innerHTML = '';
-      
-      if(data.results && data.results.length > 0) {
+
+      if (data.results && data.results.length > 0) {
         var feedUrl = data.results[0].feedUrl;
-        if(feedUrl) {
+        if (feedUrl) {
           resultDiv.innerHTML += '<p>Feed URL: <a href="' + feedUrl + '" target="_blank">' + feedUrl + '</a></p>';
         } else {
           resultDiv.innerHTML += '<p>No feed URL found in the response.</p>';
@@ -121,37 +121,44 @@
     function lookup() {
       var input = document.getElementById('itunesId').value.trim();
       var resultDiv = document.getElementById('result');
-      // Hide previous results or errors.
+      // Clear previous results/errors.
       resultDiv.innerHTML = '';
 
-      if(input === '') {
+      if (input === '') {
         displayError('Please enter an iTunes ID or URL.');
         return;
       }
       
       var itunesId = null;
       
-      // If input contains "itunes.apple.com", treat it as a URL.
-      if(input.includes("itunes.apple.com")) {
+      // Check if the input is a URL that includes "apple.com"
+      if ((input.startsWith("http://") || input.startsWith("https://")) && input.includes("apple.com")) {
         try {
           var urlObj = new URL(input);
-          var idParam = urlObj.searchParams.get("id");
-          if(idParam) {
+          // Check if the URL has an "id" query parameter (common in iTunes URLs)
+          if (urlObj.searchParams.has("id")) {
+            var idParam = urlObj.searchParams.get("id");
             itunesId = idParam.replace(/^id/i, '');
           } else {
-            displayError("Couldn't find an 'id' parameter in the URL.");
-            return;
+            // For URLs like podcasts.apple.com, extract the id from the path (/id1498786226)
+            var match = urlObj.pathname.match(/\/id(\d+)/i);
+            if (match) {
+              itunesId = match[1];
+            } else {
+              displayError("Couldn't find an 'id' in the URL.");
+              return;
+            }
           }
         } catch (e) {
           displayError("Invalid URL provided.");
           return;
         }
       }
-      // If input starts with 'id' followed by digits.
+      // If the input starts with 'id' followed by digits.
       else if (/^id\d+$/i.test(input)) {
         itunesId = input.replace(/^id/i, '');
       }
-      // If input is digits only.
+      // If the input is digits only.
       else if (/^\d+$/.test(input)) {
         itunesId = input;
       } else {
@@ -161,7 +168,7 @@
       
       // Remove any previous JSONP script tag.
       var oldScript = document.getElementById('jsonpScript');
-      if(oldScript) {
+      if (oldScript) {
         document.body.removeChild(oldScript);
       }
       
